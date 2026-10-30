@@ -1,0 +1,35 @@
+Anvil (android-xmrig-monero)
+Copyright (c) 2026 the android-xmrig-monero contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+------------------------------------------------------------------------
+
+Bundled third-party software
+
+  XMRig v6.25.0-mo1 (MoneroOcean fork)
+  Copyright (c) 2018-2024 SChernykh
+  Copyright (c) 2016-2024 XMRig developers (xmrig.com)
+  Licensed under the GNU General Public License v3.0
+
+  MoneroOcean XMRig fork:
+    https://github.com/MoneroOcean/xmrig
+
+  Upstream XMRig:
+    https://github.com/xmrig/xmrig
+
+The Android host in this repository does not modify XMRig source.
+The binary is cross-compiled with the Android NDK (TLS on). Recipe:
+docs/BUILD-XMRIG.md. SHA-256 of the shipped `libxmrig.so`:
+1f86e6fe9272b84f0fc5365b4e143ad33269c594e7c28cc730cc49929d5059a8

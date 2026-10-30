@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Anvil</string>
+    <string name="app_title_detail">Anvil — XMRig on Android</string>
+    <string name="notif_channel_name">Mining</string>
+    <string name="notif_channel_desc">Shown while XMRig is running</string>
+    <string name="notif_title">Anvil</string>
+    <string name="footer_info">Pool: gulf.moneroocean.stream:20032 TLS · 0% donate · GPL-3.0\nManage payouts to your wallet at moneroocean.stream. This app does not take a cut.\nXMRig © XMRig / MoneroOcean, bundled unmodified.</string>
+    <string name="tagline">Mines Monero on ARM64 devices. Experimental — generates heat and drains battery. No warranty, use at your own risk.</string>
+    <string name="wallet_hint">Monero wallet</string>
+    <string name="wallet_tip">Tip: a subaddress (starts with 8) is better than your primary.</string>
+    <string name="pause_hint">Pause keeps XMRig running (no re-benchmark). Long-press to stop.</string>
+</resources>
