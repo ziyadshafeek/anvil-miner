@@ -1,0 +1,39 @@
+{
+  "autosave": true,
+  "background": false,
+  "syslog": false,
+  "print-time": 30,
+  "donate-level": 0,
+  "cpu": {
+    "enabled": true,
+    "max-threads-hint": "__THREADS_PERCENT__",
+    "asm": true,
+    "huge-pages": false,
+    "rx/0":     "__THREAD_ARRAY__",
+    "rx/wow":   "__THREAD_ARRAY__",
+    "cn/r":     "__THREAD_ARRAY__",
+    "cn":       "__THREAD_ARRAY__",
+    "cn-lite":  "__THREAD_ARRAY__",
+    "cn-heavy": "__THREAD_ARRAY__",
+    "cn-pico":  "__THREAD_ARRAY__",
+    "cn/ccx":   "__THREAD_ARRAY__"
+  },
+  "http": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 18080,
+    "access-token": null,
+    "restricted": true
+  },
+  "pools": [
+    {
+      "url": "__POOL_URL__",
+      "user": "__WALLET_ADDRESS__",
+      "rig-id": "__RIG_ID__",
+      "pass": "x",
+      "tls": "__POOL_TLS__",
+      "keepalive": true,
+      "coin": "monero"
+    }
+  ]
+}

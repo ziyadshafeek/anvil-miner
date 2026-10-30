@@ -1,0 +1,36 @@
+/.gradle/
+/build/
+/app/build/
+/local.properties
+/.idea/
+*.iml
+.DS_Store
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# XMRig is rebuilt from source (see docs/BUILD-XMRIG.md). The .so is large
+# and not the reviewable part of this repo. Copy it into jniLibs before building:
+#   mkdir -p app/src/main/jniLibs/arm64-v8a
+#   cp prebuilt/libxmrig.so app/src/main/jniLibs/arm64-v8a/
+/app/src/main/jniLibs/**/*.so
+/prebuilt/*.so
+
+# Signing — never commit the keystore or passwords
+*.keystore
+*.jks
+keystore.properties
+
+# Local goose configuration
+.goosehints
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+
+# Gradle
+out/

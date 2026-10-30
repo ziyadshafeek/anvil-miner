@@ -1,0 +1,204 @@
+name: Publish release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+env:
+  NDK_VERSION: "28.2.13676358"
+
+jobs:
+  build-xmrig:
+    name: Build XMRig binary (NDK cross-compile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    outputs:
+      binary-hash: ${{ steps.hash.outputs.sha256 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Use preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Install NDK 28.2.13676358
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;$NDK_VERSION"
+          ls "/usr/local/lib/android/sdk/ndk/$NDK_VERSION"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            cmake make perl build-essential
+
+      - name: Build XMRig from source
+        run: |
+          set -euo pipefail
+          HOSTTAG=linux-x86_64
+          NDK="$ANDROID_HOME/ndk/$NDK_VERSION"
+          SR="$PWD/sysroot"
+          NCPU=$(nproc)
+
+          git clone --depth 1 --branch v6.25.0-mo1 \
+            https://github.com/MoneroOcean/xmrig.git
+          git clone --depth 1 https://github.com/libuv/libuv.git
+          git clone --depth 1 --branch openssl-3.4 \
+            https://github.com/openssl/openssl.git
+
+          # 1) libuv → static (platform 28, policy flag)
+          cmake -S libuv -B libuv-build \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=28 \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+            -DLIBUV_BUILD_TESTS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build libuv-build -j"$NCPU"
+          cmake --install libuv-build --prefix "$SR"
+
+          # 2) OpenSSL → static
+          ( cd openssl
+            export ANDROID_NDK_ROOT=$NDK
+            export PATH=$NDK/toolchains/llvm/prebuilt/$HOSTTAG/bin:$PATH
+            ./Configure android-arm64 -D__ANDROID_API__=28 \
+              no-shared no-tests no-docs --prefix="$SR"
+            make -j"$NCPU" && make install_sw )
+
+          # 3) pthread/rt stubs (NDK 28)
+          mkdir -p stublibs
+          "$NDK/toolchains/llvm/prebuilt/$HOSTTAG/bin/llvm-ar" crs stublibs/libpthread.a
+          "$NDK/toolchains/llvm/prebuilt/$HOSTTAG/bin/llvm-ar" crs stublibs/librt.a
+
+          # 4) XMRig (TLS on, ASM on, ARM64-tuned)
+          # Target is the Dimensity 7050 (Cortex-A78, ARMv8.2) only, so
+          # -march=armv8.2-a+crypto is safe for this phone. It is NOT a
+          # generic arm64-v8a floor. ASM enables XMRig's A64 JIT path;
+          # NEON/crypto instructions come from that JIT, not from hand
+          # code in this fork. No huge pages, no root, no MSR (Android).
+          # IPO/LTO is attempted here; if the NDK link fails, remove
+          # -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON and retry, do not
+          # silently drop to a debug or unoptimised build.
+          cmake -S xmrig -B xmrig-build \
+            -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=28 \
+            -DCMAKE_BUILD_TYPE=Release -DWITH_TLS=ON -DWITH_ASM=ON \
+            -DCMAKE_C_FLAGS="-O3 -march=armv8.2-a+crypto -mcpu=cortex-a78 -mtune=cortex-a78" \
+            -DCMAKE_CXX_FLAGS="-O3 -march=armv8.2-a+crypto -mcpu=cortex-a78 -mtune=cortex-a78" \
+            -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+            -DOPENSSL_ROOT_DIR="$SR" \
+            -DOPENSSL_SSL_LIBRARY="$SR/lib/libssl.a" \
+            -DOPENSSL_CRYPTO_LIBRARY="$SR/lib/libcrypto.a" \
+            -DOPENSSL_INCLUDE_DIR="$SR/include" \
+            -DWITH_OPENCL=OFF -DWITH_CUDA=OFF -DWITH_NVML=OFF \
+            -DWITH_HWLOC=OFF \
+            -DUV_LIBRARY="$SR/lib/libuv.a" -DUV_INCLUDE_DIR="$SR/include" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_EXE_LINKER_FLAGS="-L$PWD/stublibs"
+          cmake --build xmrig-build -j"$NCPU"
+
+          mkdir -p app/src/main/jniLibs/arm64-v8a
+          cp xmrig-build/xmrig app/src/main/jniLibs/arm64-v8a/libxmrig.so
+
+      - name: Verify TLS is linked
+        run: |
+          strings app/src/main/jniLibs/arm64-v8a/libxmrig.so | grep -iE 'OpenSSL 3'
+          file app/src/main/jniLibs/arm64-v8a/libxmrig.so
+          # Must be AArch64, not x86_64, and must not be a placeholder.
+          file app/src/main/jniLibs/arm64-v8a/libxmrig.so | grep -i 'aarch64\|ARM aarch64'
+
+      - name: Hash binary
+        id: hash
+        run: |
+          sha256sum app/src/main/jniLibs/arm64-v8a/libxmrig.so
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libxmrig
+          path: app/src/main/jniLibs/arm64-v8a/libxmrig.so
+
+  build-apk:
+    name: Build and attest APK
+    needs: build-xmrig
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Use preinstalled Android SDK
+        # android-actions/setup-android@v3 fails on the Oct 2026 runner
+        # image (sdkmanager: package 'tools' not found, exit 1). The
+        # runner already ships the SDK at /usr/local/lib/android/sdk,
+        # so point Gradle at it instead of reinstalling via that action.
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          ls /usr/local/lib/android/sdk/build-tools
+          ls /usr/local/lib/android/sdk/platforms
+
+      - name: Restore XMRig binary
+        uses: actions/download-artifact@v4
+        with:
+          name: libxmrig
+          path: app/src/main/jniLibs/arm64-v8a/
+
+      - name: Verify binary artifact
+        run: |
+          ls -lh app/src/main/jniLibs/arm64-v8a/libxmrig.so
+          file app/src/main/jniLibs/arm64-v8a/libxmrig.so
+
+      - name: Build release APK
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace
+
+      # CI has no keystore, so this APK is unsigned. Do not attach it to the
+      # GitHub Release — skeptics will treat an unsigned miner APK as malware.
+      # Signed Anvil-*.apk is uploaded separately from the local release keystore.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: false
+          body: |
+            ARM64 Android app that runs XMRig (MoneroOcean fork). Paste a wallet, start mining.
+
+            **Install:** download the signed **Anvil-*.apk** from this release (uploaded after CI). Do not install an unsigned APK.
+
+            - Package: `io.github.j3r0nim0.anvil`
+            - Pool: `gulf.moneroocean.stream:20032` (TLS)
+            - Donate: 0% while on MoneroOcean. This app takes no cut.
+
+            **Use at your own risk.** RandomX will heat the phone. No warranty. Android 8+, arm64-v8a only.
+
+            Payouts: https://moneroocean.stream
+
+      - name: Upload unsigned APK as workflow artifact (not a release asset)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-${{ github.ref_name }}
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
