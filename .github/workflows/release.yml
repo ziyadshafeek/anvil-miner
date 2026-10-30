@@ -169,7 +169,7 @@ jobs:
           file app/src/main/jniLibs/arm64-v8a/libxmrig.so
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace
 
       # CI has no keystore, so this APK is unsigned. Do not attach it to the
       # GitHub Release — skeptics will treat an unsigned miner APK as malware.

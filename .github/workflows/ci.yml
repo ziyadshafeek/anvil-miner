@@ -46,4 +46,4 @@ jobs:
           restore-keys: gradle-
 
       - name: Validate Kotlin compilation
-        run: ./gradlew compileDebugKotlin --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew compileDebugKotlin --no-daemon --stacktrace
