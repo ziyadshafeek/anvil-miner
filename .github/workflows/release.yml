@@ -34,6 +34,12 @@ jobs:
       - name: Setup Android SDK with NDK
         uses: android-actions/setup-android@v3
 
+      - name: Install NDK 28.2.13676358
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "ndk;$NDK_VERSION"
+          ls "/usr/local/lib/android/sdk/ndk/$NDK_VERSION"
+
       - name: Install build dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends \
@@ -138,8 +144,16 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Use preinstalled Android SDK
+        # android-actions/setup-android@v3 fails on the Oct 2026 runner
+        # image (sdkmanager: package 'tools' not found, exit 1). The
+        # runner already ships the SDK at /usr/local/lib/android/sdk,
+        # so point Gradle at it instead of reinstalling via that action.
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          ls /usr/local/lib/android/sdk/build-tools
+          ls /usr/local/lib/android/sdk/platforms
 
       - name: Restore XMRig binary
         uses: actions/download-artifact@v4
