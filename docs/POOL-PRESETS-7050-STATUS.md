@@ -13,11 +13,13 @@ Source checked: https://github.com/feelcoin-org/feelcoin-miner/releases/tag/v0.1
 - Feelcoin Official Pool default is now TLS `pool.feelcoin.org:4244` in the
   APK UI. `pool.feelcoin.org:4242` is kept only as the plaintext alternative,
   labelled as such in the preset note, not as the default.
-- The 0.5% fee and 0.33 FEEL auto-payout figures stay UNVERIFIED: the
-  official release page does not confirm them, so they are not upgraded to
-  verified. The in-app `verified` flag for this preset stays false, so the
-  chooser warning still shows; the endpoint default alone is what the
-  official release confirms.
+- The 0.5% pool fee is now VERIFIED, from the official feelcoin-miner
+  README itself: "The official pool uses PPLNS and a 0.5% pool fee."
+  (That README line also confirms PPLNS.) The 0.33 FEEL auto-payout
+  figure remains UNVERIFIED: no source for it was found in the README.
+  The in-app `verified` flag for this preset stays false, so the
+  chooser warning still shows; the endpoint default and the fee are
+  what the official sources confirm, the payout figure is not.
 - Fork limitation, stated exactly: the official miner is Linux x86_64
   (built/tested on Ubuntu 26.04.1 LTS), based on XMRig 6.26.0, with native
   FEEL wallet address validation. This Android ARM64 fork is still XMRig
@@ -51,7 +53,7 @@ AND enters his own public wallet address for that coin.
 | Preset | Endpoint (as coded) | Status |
 |---|---|---|
 | MoneroOcean default | `gulf.moneroocean.stream:20032`, TLS | UNVERIFIED against an official MoneroOcean port list in this run. Kept as the APK2 default, unchanged. The fork's own default `gulf.moneroocean.stream:10128` plaintext is documented only, not selectable. |
-| Feelcoin Official Pool | `pool.feelcoin.org:4244` TLS (official default, Feelcoin Miner v0.1.0); plaintext alternative `:4242`, start diff 100, pass `x` | ENDPOINT DEFAULT VERIFIED against the official Feelcoin Miner v0.1.0 release page (TLS 4244 default, Linux x86_64, XMRig 6.26.0, native FEEL validation, 0% default upstream donation). NOT verified here: start diff 100, 0.33 FEEL auto-payout, 0.5% fee, and `wallet.feelcoin.org` as the wallet URL — those remain user-named UI text. Fork limitation: this Android fork is XMRig 6.25.0-mo1 and does NOT have the official miner's FEEL validation, so the manual first/last-character check stays. |
+| Feelcoin Official Pool | `pool.feelcoin.org:4244` TLS (official default, Feelcoin Miner v0.1.0); plaintext alternative `:4242`, start diff 100, pass `x` | ENDPOINT DEFAULT VERIFIED against the official Feelcoin Miner v0.1.0 release page (TLS 4244 default, Linux x86_64, XMRig 6.26.0, native FEEL validation, 0% default upstream donation). 0.5% PPLNS pool fee VERIFIED from the official feelcoin-miner README ("The official pool uses PPLNS and a 0.5% pool fee."). NOT verified here: start diff 100, 0.33 FEEL auto-payout, and `wallet.feelcoin.org` as the wallet URL — those remain user-named UI text. Fork limitation: this Android fork is XMRig 6.25.0-mo1 and does NOT have the official miner's FEEL validation, so the manual first/last-character check stays. |
 | VeinPool Feelcoin PPLNS | `veinpool.fr:3290` | UNVERIFIED — no VeinPool source confirming this port/coin in this run. |
 | VeinPool Feelcoin Open Squad | `veinpool.fr:3293`, worker prefix `RZP3-` | UNVERIFIED — port, squad mode, and the 5% small-miner bonus named by the user are not verified. |
 | VeinPool Feelcoin SOLO | `veinpool.fr:3292` | UNVERIFIED — no VeinPool source confirming this port in this run. |

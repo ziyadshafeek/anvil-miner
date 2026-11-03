@@ -72,9 +72,10 @@ object PoolPresets {
             note = "Official default from Feelcoin Miner v0.1.0: TLS " +
                 "pool.feelcoin.org:4244. Plaintext alternative: " +
                 "pool.feelcoin.org:4242 (not the default). rx/0, start diff " +
-                "100, 0.33 FEEL auto-payout, 0.5% fee — those payout/fee " +
-                "figures remain UNVERIFIED, the official release page does " +
-                "not confirm them. This Android fork (XMRig 6.25.0-mo1) does " +
+                "100. 0.5% pool fee VERIFIED from the official feelcoin-miner " +
+                "README: 'The official pool uses PPLNS and a 0.5% pool fee.' " +
+                "0.33 FEEL auto-payout remains UNVERIFIED — no source for it " +
+                "in the README. This Android fork (XMRig 6.25.0-mo1) does " +
                 "NOT have the official miner's native FEEL address " +
                 "validation, so the manual first/last-character check stays.",
         ),
