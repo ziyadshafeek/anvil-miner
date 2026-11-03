@@ -6,6 +6,30 @@ Status: code complete on this branch, committed locally, pushed, CI tag created.
 for this branch may be quoted until the user installs a signed CI APK and runs
 the checklist at the bottom of this file.**
 
+## Correction against official Feelcoin Miner v0.1.0 (added after v0.2.4)
+
+Source checked: https://github.com/feelcoin-org/feelcoin-miner/releases/tag/v0.1.0
+— "First public Linux release of the official Feelcoin CPU miner".
+- Feelcoin Official Pool default is now TLS `pool.feelcoin.org:4244` in the
+  APK UI. `pool.feelcoin.org:4242` is kept only as the plaintext alternative,
+  labelled as such in the preset note, not as the default.
+- The 0.5% fee and 0.33 FEEL auto-payout figures stay UNVERIFIED: the
+  official release page does not confirm them, so they are not upgraded to
+  verified. The in-app `verified` flag for this preset stays false, so the
+  chooser warning still shows; the endpoint default alone is what the
+  official release confirms.
+- Fork limitation, stated exactly: the official miner is Linux x86_64
+  (built/tested on Ubuntu 26.04.1 LTS), based on XMRig 6.26.0, with native
+  FEEL wallet address validation. This Android ARM64 fork is still XMRig
+  6.25.0-mo1 and does NOT have that FEEL validation, so the manual
+  first/last-character check for non-Monero addresses stays. The in-app
+  guide Step 9 says this in full.
+- Deliberately NOT added: `127.0.0.1:35781` is the official miner's direct
+  solo daemon RPC, not a pool, and this app does not run a Feelcoin daemon,
+  so it is not a mining preset here. Treasury-aware block template parsing
+  is likewise NOT claimed for pool mining: in the official miner it is a
+  solo-daemon feature, not a pool stratum feature.
+
 ## Safety rules kept (untouched)
 
 - Safety pauses unchanged: CPU pause 65 °C / resume 55 °C, battery pause 40 °C /
@@ -27,7 +51,7 @@ AND enters his own public wallet address for that coin.
 | Preset | Endpoint (as coded) | Status |
 |---|---|---|
 | MoneroOcean default | `gulf.moneroocean.stream:20032`, TLS | UNVERIFIED against an official MoneroOcean port list in this run. Kept as the APK2 default, unchanged. The fork's own default `gulf.moneroocean.stream:10128` plaintext is documented only, not selectable. |
-| Feelcoin Official Pool | `pool.feelcoin.org:4242`, TLS option `:4244`, start diff 100, pass `x` | PARTIALLY VERIFIED: feelcoin.org's own whitepaper (v1.2) and faucet page confirm `pool.feelcoin.org:4242` standard, `:4244` TLS, RandomX, PPLNS, 0.5% fee. NOT verified here: start diff 100, 0.33 FEEL auto-payout, and `wallet.feelcoin.org` as the wallet URL — those remain user-named UI text. |
+| Feelcoin Official Pool | `pool.feelcoin.org:4244` TLS (official default, Feelcoin Miner v0.1.0); plaintext alternative `:4242`, start diff 100, pass `x` | ENDPOINT DEFAULT VERIFIED against the official Feelcoin Miner v0.1.0 release page (TLS 4244 default, Linux x86_64, XMRig 6.26.0, native FEEL validation, 0% default upstream donation). NOT verified here: start diff 100, 0.33 FEEL auto-payout, 0.5% fee, and `wallet.feelcoin.org` as the wallet URL — those remain user-named UI text. Fork limitation: this Android fork is XMRig 6.25.0-mo1 and does NOT have the official miner's FEEL validation, so the manual first/last-character check stays. |
 | VeinPool Feelcoin PPLNS | `veinpool.fr:3290` | UNVERIFIED — no VeinPool source confirming this port/coin in this run. |
 | VeinPool Feelcoin Open Squad | `veinpool.fr:3293`, worker prefix `RZP3-` | UNVERIFIED — port, squad mode, and the 5% small-miner bonus named by the user are not verified. |
 | VeinPool Feelcoin SOLO | `veinpool.fr:3292` | UNVERIFIED — no VeinPool source confirming this port in this run. |
@@ -120,7 +144,11 @@ AND enters his own public wallet address for that coin.
   never photograph it, never share it, never paste it into the miner or to any
   agent; (8) copy ONLY the public Receive address; (9) in the APK pick the
   preset, paste only that public address, with the warning that for non-Monero
-  presets the app cannot checksum-verify the address; (10) start mining, check
+  presets the app cannot checksum-verify the address — and, after the v0.1.0
+  correction, that Feelcoin Official defaults to TLS `pool.feelcoin.org:4244`
+  (4242 is only the plaintext alternative) and that this Android fork
+  (XMRig 6.25.0-mo1) does NOT have the official Linux x86_64 miner's
+  (XMRig 6.26.0) native FEEL validation, so the manual check stays; (10) start mining, check
   accepted shares, temperatures, and the SUSTAINED60 log, then check the pool's
   own page yourself; (11) thread-mask choice, judged on 60-second speed over
   30 minutes, not a burst, plus the THP process-total caveat; (12) LAN proxy is

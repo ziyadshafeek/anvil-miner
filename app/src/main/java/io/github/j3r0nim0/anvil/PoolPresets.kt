@@ -31,6 +31,8 @@ object PoolPresets {
         val port: Int,
         val tls: Boolean,
         val tlsPort: Int? = null,
+        /** Plaintext alternative port, if the preset's default is TLS. Labelled in the note, not used as default. */
+        val plaintextPort: Int? = null,
         val algo: String = "rx/0",
         /** Null = pool auto / vardiff. Non-null = XMRig sends wallet+N. */
         val startDifficulty: Int? = null,
@@ -62,13 +64,19 @@ object PoolPresets {
             id = "feelcoin-official",
             name = "Feelcoin Official Pool",
             host = "pool.feelcoin.org",
-            port = 4242,
-            tls = false,
+            port = 4244,
+            tls = true,
             tlsPort = 4244,
+            plaintextPort = 4242,
             startDifficulty = 100,
-            note = "User-named: rx/0, start diff 100, 0.33 FEEL auto-payout, " +
-                "0.5% fee, TLS option port 4244. UNVERIFIED in this run — " +
-                "payout/fee figures are UI text only, not checked claims.",
+            note = "Official default from Feelcoin Miner v0.1.0: TLS " +
+                "pool.feelcoin.org:4244. Plaintext alternative: " +
+                "pool.feelcoin.org:4242 (not the default). rx/0, start diff " +
+                "100, 0.33 FEEL auto-payout, 0.5% fee — those payout/fee " +
+                "figures remain UNVERIFIED, the official release page does " +
+                "not confirm them. This Android fork (XMRig 6.25.0-mo1) does " +
+                "NOT have the official miner's native FEEL address " +
+                "validation, so the manual first/last-character check stays.",
         ),
         Preset(
             id = "veinpool-feelcoin-pplns",
