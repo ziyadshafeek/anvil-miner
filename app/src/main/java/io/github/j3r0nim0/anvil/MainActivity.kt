@@ -745,7 +745,7 @@ class MainActivity : AppCompatActivity() {
             walletEditTitle.text = if (valid) {
                 "Change wallet"
             } else {
-                walletEditTitle.text = if (selectedPreset().requiresMoneroAddress) {
+                if (selectedPreset().requiresMoneroAddress) {
                     "Enter your Monero (XMR) wallet address"
                 } else {
                     "Enter your public Receive address for ${selectedPreset().name} — never a seed, private key, or password"
