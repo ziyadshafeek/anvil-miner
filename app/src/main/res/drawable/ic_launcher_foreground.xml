@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer ring (stroke effect using even-odd fill with two circles) -->
+    <path
+        android:fillColor="#FF6B35"
+        android:fillType="evenOdd"
+        android:strokeWidth="0"
+        android:pathData="
+            M54,14 A40,40 0 1,1 54,94 A40,40 0 1,1 54,14 Z
+            M54,24 A30,30 0 1,1 54,84 A30,30 0 1,1 54,24 Z
+        " />
+    <!-- Monero M: outer verticals + inner V with center spike -->
+    <path
+        android:fillColor="#FF6B35"
+        android:pathData="
+            M36,30
+            L28,80
+            L54,50
+            L54,24
+            L54,50
+            L80,80
+            L72,30
+            Z
+        " />
+</vector>

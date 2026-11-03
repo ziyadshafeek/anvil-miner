@@ -1,0 +1,150 @@
+diff --git a/src/crypto/randomx/jit_compiler_a64.cpp b/src/crypto/randomx/jit_compiler_a64.cpp
+index a45ad08..ab3fa9e 100644
+--- a/src/crypto/randomx/jit_compiler_a64.cpp
++++ b/src/crypto/randomx/jit_compiler_a64.cpp
+@@ -141,6 +141,11 @@ void JitCompilerA64::generateProgram(Program& program, ProgramConfiguration& con
+ 	for (uint32_t i = 0; i < RegistersCount; ++i)
+ 		reg_changed_offset[i] = codePos;
+ 
++	// Full-7050: reset dead-CFROUND tracking for each program.
++	prevCFROUNDPos = -1;
++	prevCFROUNDLen = 0;
++	prevFPPos = -1;
++
+ 	for (uint32_t i = 0; i < program.getSize(); ++i)
+ 	{
+ 		Instruction& instr = program(i);
+@@ -200,6 +205,11 @@ void JitCompilerA64::generateProgramLight(Program& program, ProgramConfiguration
+ 	for (uint32_t i = 0; i < RegistersCount; ++i)
+ 		reg_changed_offset[i] = codePos;
+ 
++	// Full-7050: reset dead-CFROUND tracking for each program.
++	prevCFROUNDPos = -1;
++	prevCFROUNDLen = 0;
++	prevFPPos = -1;
++
+ 	for (uint32_t i = 0; i < program.getSize(); ++i)
+ 	{
+ 		Instruction& instr = program(i);
+@@ -913,6 +923,7 @@ void JitCompilerA64::h_FSWAP_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FADD_R(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	const uint32_t src = (instr.src % 4) + 24;
+ 	const uint32_t dst = (instr.dst % 4) + 16;
+ 
+@@ -921,6 +932,7 @@ void JitCompilerA64::h_FADD_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FADD_M(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	uint32_t k = codePos;
+ 
+ 	const uint32_t src = IntRegMap[instr.src];
+@@ -936,6 +948,7 @@ void JitCompilerA64::h_FADD_M(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FSUB_R(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	const uint32_t src = (instr.src % 4) + 24;
+ 	const uint32_t dst = (instr.dst % 4) + 16;
+ 
+@@ -944,6 +957,7 @@ void JitCompilerA64::h_FSUB_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FSUB_M(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	uint32_t k = codePos;
+ 
+ 	const uint32_t src = IntRegMap[instr.src];
+@@ -966,6 +980,7 @@ void JitCompilerA64::h_FSCAL_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FMUL_R(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	const uint32_t src = (instr.src % 4) + 24;
+ 	const uint32_t dst = (instr.dst % 4) + 20;
+ 
+@@ -974,6 +989,7 @@ void JitCompilerA64::h_FMUL_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FDIV_M(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	uint32_t k = codePos;
+ 
+ 	const uint32_t src = IntRegMap[instr.src];
+@@ -995,6 +1011,7 @@ void JitCompilerA64::h_FDIV_M(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_FSQRT_R(Instruction& instr, uint32_t& codePos)
+ {
++	prevFPPos = (int32_t)codePos;
+ 	const uint32_t dst = (instr.dst % 4) + 20;
+ 
+ 	emit32(ARMV8A::FSQRT | dst | (dst << 5), code, codePos);
+@@ -1002,6 +1019,10 @@ void JitCompilerA64::h_FSQRT_R(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_CBRANCH(Instruction& instr, uint32_t& codePos)
+ {
++	// Conservative: a branch may reach FP code, so a CFROUND
++	// before it must not be NOPed by one after it.
++	prevCFROUNDPos = -1;
++	prevCFROUNDLen = 0;
+ 	uint32_t k = codePos;
+ 
+ 	const uint32_t dst = IntRegMap[instr.dst];
+@@ -1028,6 +1049,24 @@ void JitCompilerA64::h_CBRANCH(Instruction& instr, uint32_t& codePos)
+ 
+ void JitCompilerA64::h_CFROUND(Instruction& instr, uint32_t& codePos)
+ {
++	// Full-7050 dead-CFROUND elimination (A64 analogue of the x86
++	// JIT's prevCFROUND NOP-out). If the previous CFROUND was emitted
++	// and no rounding-sensitive FP instruction has been emitted since
++	// (prevCFROUNDPos > prevFPPos), the previous emission is dead:
++	// its only effect was to set FPCR, and nothing read FPCR in
++	// between. Overwrite it with A64 NOP (0xD503201F) and emit the
++	// new CFROUND in its place. This does NOT skip an msr fpcr when
++	// the rounding mode is merely unchanged at runtime: the mode is
++	// derived from a runtime register value, so a compile-time mode
++	// comparison is not available here, and a runtime mrs/cmp/branch
++	// guard would cost more than the rare CFROUND itself.
++	// Emission length: 4 words with rotation, 3 words without.
++	if (prevCFROUNDPos >= 0 && prevCFROUNDPos > prevFPPos && prevCFROUNDLen > 0)
++	{
++		for (uint32_t i = 0; i < prevCFROUNDLen; i++)
++			*(uint32_t*)(code + prevCFROUNDPos + i * 4) = 0xD503201F;
++	}
++	uint32_t startPos = codePos;
+ 	uint32_t k = codePos;
+ 
+ 	const uint32_t src = IntRegMap[instr.src];
+@@ -1055,6 +1094,8 @@ void JitCompilerA64::h_CFROUND(Instruction& instr, uint32_t& codePos)
+ 	// msr fpcr, tmp_reg
+ 	emit32(0xD51B4400 | tmp_reg, code, k);
+ 
++	prevCFROUNDPos = (int32_t)startPos;
++	prevCFROUNDLen = (k - startPos) / 4;
+ 	codePos = k;
+ }
+ 
+diff --git a/src/crypto/randomx/jit_compiler_a64.hpp b/src/crypto/randomx/jit_compiler_a64.hpp
+index 32ff516..21dd7cf 100644
+--- a/src/crypto/randomx/jit_compiler_a64.hpp
++++ b/src/crypto/randomx/jit_compiler_a64.hpp
+@@ -79,6 +79,16 @@ namespace randomx {
+ 	private:
+ 		const bool hugePages;
+ 		uint32_t reg_changed_offset[8]{};
++		// Full-7050 dead-CFROUND tracking (mirrors the x86 JIT idea:
++		// a CFROUND that no floating-point instruction used is dead
++		// and may be NOPed by the next CFROUND). Positions are byte
++		// offsets into code, or -1 when none is live. prevFPPos is
++		// updated only by rounding-sensitive FP handlers (FADD, FSUB,
++		// FMUL, FDIV, FSQRT); FSWAP/FSCAL do not use rounding, and
++		// CBRANCH invalidates the live CFROUND conservatively.
++		int32_t prevCFROUNDPos = -1;
++		uint32_t prevCFROUNDLen = 0;
++		int32_t prevFPPos = -1;
+ 		uint8_t* code = nullptr;
+ 		uint32_t literalPos;
+ 		uint32_t num32bitLiterals = 0;
